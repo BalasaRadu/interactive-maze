@@ -16,7 +16,7 @@ function playLevel(level) {
 		process.stdin.on('keypress', (ch, key) => {
 			field.movePlayer(key);
 			displayGame(field, level);
-			if (field.hatFound) {
+			if (field.finishFound) {
 				process.stdin.removeAllListeners('keypress');
 				resolve();
 			}

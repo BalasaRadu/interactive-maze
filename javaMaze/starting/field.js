@@ -1,9 +1,10 @@
 const Queue = require('queue-fifo');
 
-const hatCharacter = '^';
+const finishCharacter = '^';
 const holeCharacter = 'O';
 const fieldCharacter = '░';
 const pathCharacter = '*';
+const currentPositionCharacter = '@';
 
 class Field {
 	constructor(height, width, complexity) {
@@ -11,13 +12,13 @@ class Field {
 		this._width = width;
 		this._complexity = complexity - 1;
 		this._playerCoords = [0, 0];
-		this._hatCoords = [height - 1, width - 1];
-		this._hatFound = false;
+		this._finishCoords = [height - 1, width - 1];
+		this._finishFound = false;
 
 		this.generateField();
 	}
-	get hatFound() {
-		return this._hatFound;
+	get finishFound() {
+		return this._finishFound;
 	}
 	fillField(startCoord, visited) {
 		const dx = [-1, 1, 0, 0];
@@ -33,7 +34,7 @@ class Field {
 			queue.dequeue();
 			for (let l = 0; l < 4; l++) {
 				const newX = x + dx[l];
-				const newY = y + dy[l]; 
+				const newY = y + dy[l];
 				if (this.checkPosition([newX, newY]) && visited[newX][newY] == 0) {
 					visited[newX][newY] = visited[x][y] + 1;
 					queue.enqueue({'x': newX, 'y': newY});
@@ -44,7 +45,7 @@ class Field {
 	checkField() {
 		let visited = Array.from({length: this._height}, () => Array.from({length: this._height}).fill(0));
 		this.fillField(this._playerCoords, visited);
-		const roadLength = visited[this._hatCoords[0]][this._hatCoords[1]];
+		const roadLength = visited[this._finishCoords[0]][this._finishCoords[1]];
 		const optimalLength = Math.floor((this._height + this._width) * (100 + this._complexity * 10) / 100);
 		return roadLength >= optimalLength && roadLength < optimalLength * 12 / 10;
 	}
@@ -57,8 +58,8 @@ class Field {
 				})
 			);
 
-			this._field[this._playerCoords[0]][this._playerCoords[1]] = pathCharacter;
-			this._field[this._height - 1][this._width - 1] = hatCharacter;
+			this._field[this._playerCoords[0]][this._playerCoords[1]] = currentPositionCharacter;
+			this._field[this._height - 1][this._width - 1] = finishCharacter;
 
 		} while(!this.checkField());
 	}
@@ -74,14 +75,15 @@ class Field {
 			console.log('You lost :(');
 			process.exit();
 		}
-		this._field[this._playerCoords[0]][this._playerCoords[1]] = pathCharacter;
-		if (this._playerCoords[0] == this._hatCoords[0] && this._playerCoords[1] == this._hatCoords[1]) {
-			console.log('You found your hat :)');
-			this._hatFound = true;
+		this._field[this._playerCoords[0]][this._playerCoords[1]] = currentPositionCharacter;
+		if (this._playerCoords[0] == this._finishCoords[0] && this._playerCoords[1] == this._finishCoords[1]) {
+			console.log('You found the finish :)');
+			this._finishFound = true;
 		}
 	}
 	movePlayer(key) {
 		if (key) {
+			this._field[this._playerCoords[0]][this._playerCoords[1]] = pathCharacter;
 			if (key.name == 'w') {
 				this._playerCoords[0]--;
 			}
