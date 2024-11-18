@@ -1,5 +1,5 @@
-const keypress = require('keypress');
-const Field = require('./field.js');
+import keypress from 'keypress';
+import Field from './field.js';
 
 function displayGame(field, level) {
 	console.clear();
@@ -16,7 +16,7 @@ function playLevel(level) {
 		process.stdin.on('keypress', (ch, key) => {
 			field.movePlayer(key);
 			displayGame(field, level);
-			if (field.finishFound) {
+			if (field._finishRound) {
 				process.stdin.removeAllListeners('keypress');
 				resolve();
 			}

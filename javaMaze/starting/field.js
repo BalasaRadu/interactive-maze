@@ -1,10 +1,13 @@
-const Queue = require('queue-fifo');
+import PriorityQueue from 'js-priority-queue';
 
 const finishCharacter = '^';
 const holeCharacter = 'O';
 const fieldCharacter = '░';
 const pathCharacter = '*';
 const currentPositionCharacter = '@';
+
+const dx = [-1, 1, 0, 0];
+const dy = [0, 0, -1, 1];
 
 class Field {
 	constructor(height, width, complexity) {
@@ -13,56 +16,74 @@ class Field {
 		this._complexity = complexity - 1;
 		this._playerCoords = [0, 0];
 		this._finishCoords = [height - 1, width - 1];
-		this._finishFound = false;
+		this._finishRound = false;
 
 		this.generateField();
 	}
+	
 	get finishFound() {
-		return this._finishFound;
+		return this._finishRound;
 	}
-	fillField(startCoord, visited) {
-		const dx = [-1, 1, 0, 0];
-		const dy = [0, 0, -1, 1];
-		
-		const queue = new Queue();
-		queue.enqueue({'x': startCoord[0], 'y': startCoord[1]});
-		visited[startCoord[0]][startCoord[1]] = 1;
-		
-		while(queue.size()) {
-			const x = queue.peek().x;
-			const y = queue.peek().y;
-			queue.dequeue();
-			for (let l = 0; l < 4; l++) {
-				const newX = x + dx[l];
-				const newY = y + dy[l];
-				if (this.checkPosition([newX, newY]) && visited[newX][newY] == 0) {
-					visited[newX][newY] = visited[x][y] + 1;
-					queue.enqueue({'x': newX, 'y': newY});
+
+	checkPositionInField(x, y) {
+		return x >= 0 && x < this._height && y >= 0 && y < this._width;
+	}
+
+	getVisitedNeighbours(x, y, visited) {
+		let cnt = 0;
+		for (let  i = 0; i < 4; i++) {
+			const new_x = x + dx[i];
+			const new_y = y + dy[i];  
+			if (this.checkPositionInField(new_x, new_y) && visited[new_x][new_y]) {
+				cnt++;
+			}
+		}
+		return cnt;
+	}
+
+	generateField() {
+		let visited = Array.from({length: this._height}, () => Array.from({length: this._height}).fill(false));
+		this._field = Array.from({length: this._height}, () => Array.from({length: this._height}).fill(false));
+
+		const pq = new PriorityQueue({
+			comparator: (a, b) => a.priority - b.priority,
+		});
+		pq.queue({positon: [this._playerCoords[0], this._playerCoords[1] + 1], priority: Math.random()});
+		pq.queue({positon: [this._playerCoords[0] + 1, this._playerCoords[1]], priority: Math.random()});
+		visited[this._playerCoords[0]][this._playerCoords[1]] = true;
+
+		while (pq.length) {
+			const currentCoords = pq.dequeue().positon;
+			if (this.getVisitedNeighbours(currentCoords[0], currentCoords[1], visited) == 1) {
+				visited[currentCoords[0]][currentCoords[1]] = true;
+				for (let  i = 0; i < 4; i++) {
+					const new_x = currentCoords[0] + dx[i];
+					const new_y = currentCoords[1] + dy[i];
+					if (this.checkPositionInField(new_x, new_y) && !visited[new_x][new_y]) {
+						pq.queue({positon: [new_x, new_y], priority: Math.random()});
+					}
 				}
 			}
 		}
-	}
-	checkField() {
-		let visited = Array.from({length: this._height}, () => Array.from({length: this._height}).fill(0));
-		this.fillField(this._playerCoords, visited);
-		const roadLength = visited[this._finishCoords[0]][this._finishCoords[1]];
-		const optimalLength = Math.floor((this._height + this._width) * (100 + this._complexity * 10) / 100);
-		return roadLength >= optimalLength && roadLength < optimalLength * 12 / 10;
-	}
-	generateField() {
-		do {
-			this._field = Array.from({ length: this._height }, () => 
-				Array.from({ length: this._width }, () => {
-					const seed = Math.random() < 0.9 - this._complexity / 10;
-					return seed ? fieldCharacter : holeCharacter;
-				})
-			);
+		
+		if (!visited[this._finishCoords[0]][this._finishCoords[1]]) {
+			visited[this._finishCoords[0] - 1][this._finishCoords[1]] = true;
+			visited[this._finishCoords[0]][this._finishCoords[1] - 1] = true;
+			visited[this._finishCoords[0] - 2][this._finishCoords[1]] = true;
+			visited[this._finishCoords[0]][this._finishCoords[1] - 2] = true;
+		}
 
-			this._field[this._playerCoords[0]][this._playerCoords[1]] = currentPositionCharacter;
-			this._field[this._height - 1][this._width - 1] = finishCharacter;
+		for (let i = 0; i < this._height; i++) {
+			for (let j = 0; j < this._width; j++) {
+				this._field[i][j] = visited[i][j] ? fieldCharacter : holeCharacter;
+			}
+		}
 
-		} while(!this.checkField());
+		this._field[this._playerCoords[0]][this._playerCoords[1]] = currentPositionCharacter;
+		this._field[this._height - 1][this._width - 1] = finishCharacter;
+
 	}
+
 	checkPosition(coords) {
 		return coords[0] >= 0 &&
 				coords[0] < this._height &&
@@ -70,6 +91,7 @@ class Field {
 				coords[1] < this._width &&
 				this._field[coords[0]][coords[1]] != holeCharacter;
 	}
+
 	updateFiled() {
 		if (!this.checkPosition(this._playerCoords)) {
 			console.log('You lost :(');
@@ -78,9 +100,10 @@ class Field {
 		this._field[this._playerCoords[0]][this._playerCoords[1]] = currentPositionCharacter;
 		if (this._playerCoords[0] == this._finishCoords[0] && this._playerCoords[1] == this._finishCoords[1]) {
 			console.log('You found the finish :)');
-			this._finishFound = true;
+			this._finishRound = true;
 		}
 	}
+
 	movePlayer(key) {
 		if (key) {
 			this._field[this._playerCoords[0]][this._playerCoords[1]] = pathCharacter;
@@ -103,6 +126,7 @@ class Field {
 		}
 		this.updateFiled();
 	}
+
 	displayField() {
 		this._field.forEach((element) => {
 			console.log(`${element.join('')}`);
@@ -111,4 +135,4 @@ class Field {
 	}
 }
 
-module.exports = Field;
+export default Field;
