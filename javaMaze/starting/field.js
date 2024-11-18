@@ -13,7 +13,7 @@ class Field {
 	constructor(height, width, complexity) {
 		this._height = height;
 		this._width = width;
-		this._complexity = complexity - 1;
+		this._complexity = complexity;
 		this._playerCoords = [0, 0];
 		this._finishCoords = [height - 1, width - 1];
 		this._finishRound = false;
@@ -81,7 +81,18 @@ class Field {
 
 		this._field[this._playerCoords[0]][this._playerCoords[1]] = currentPositionCharacter;
 		this._field[this._height - 1][this._width - 1] = finishCharacter;
+		this.changeComplexity();
+	}
 
+	changeComplexity() {
+		for (let i = 0; i < this._height; i++) {
+			for (let j = 0; j < this._width; j++) {
+				if (this._field[i][j] == holeCharacter) {
+					const seed = Math.floor(Math.random() * 5);
+					this._field[i][j] = seed < 5 - this._complexity ? fieldCharacter : holeCharacter;
+				}
+			}
+		}
 	}
 
 	checkPosition(coords) {
